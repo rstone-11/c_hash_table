@@ -1,12 +1,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdio.h>
 #include "hash_table.h"
 #include "prime.h"
 
 #define HT_PRIME_1 151
 #define HT_PRIME_2 163
-#define HT_INITIAL_BASE_SIZE 50
+#define HT_INITIAL_BASE_SIZE 10
 static ht_item HT_DELETED_ITEM = {NULL, NULL};
 
 
@@ -31,13 +32,43 @@ static int ht_hash(const char* s, const int a, const int m){
         hash += (long)pow(a, len_s - (i+1)) * s[i];
         hash = hash % m;
     }
+
+    if(hash == 0){
+        hash = 1;
+    }
     return (int)hash;
 }
 
 static int ht_get_hash(const char* s, const int num_buckets, const int attempt){
     const int hash_a = ht_hash(s, HT_PRIME_1, num_buckets);
-    const int hash_b = ht_hash(s, HT_PRIME_2, num_buckets);
+    int hash_b = ht_hash(s, HT_PRIME_2, num_buckets);
+
+    hash_b = hash_b % num_buckets == 0 ? hash_b -1 : hash_b;
+
+    printf("Hash A: %i", hash_a);
+    printf("Hash B: %i", hash_b);
+
+    int index = (hash_a + (attempt * (hash_b+1))) % num_buckets;
+    printf("Hashing key \"%s\": Attempt %d -> Index %d\n", s, attempt, index);
     return (hash_a + (attempt * (hash_b+1))) % num_buckets;
+}
+
+static void* xmalloc(size_t size){
+    void* ptr = malloc(size);
+    if(ptr == NULL){
+        fprintf(stderr, "Error: Out of memory, failed to allocate %zu bytes.\n", size);
+        exit(EXIT_FAILURE);
+    }
+    return ptr;
+}
+
+static void* xcalloc(size_t num, size_t size){
+    void* ptr = calloc(num, size);
+    if(ptr == NULL){
+        fprintf(stderr, "Error: Out of memory, failed to allocate %zu bytes.\n", num * size);
+        exit(EXIT_FAILURE);
+    }
+    return ptr;
 }
 
 static ht_hash_table* ht_new_sized(const int base_size){
@@ -55,7 +86,7 @@ static void ht_resize(ht_hash_table* ht, const int base_size){
     if(base_size < HT_INITIAL_BASE_SIZE){
         return;
     }
-
+    printf("Resizing from %d to %d\n", ht->base_size, base_size);
     ht_hash_table* new_ht = ht_new_sized(base_size);
     for(int i = 0; i < ht->size; i++){
         ht_item* item = ht->items[i];
@@ -106,9 +137,10 @@ void ht_del_hash_table(ht_hash_table* ht){
 }
 
 void ht_insert(ht_hash_table* ht, const char* key, const char* value){
-
+    printf("Inserting key \"%s\" with value \"%s\"\n", key, value);
     const int load = ht->count * 100 / ht->size;
     if(load > 70){
+        printf("Load factor exceeded, resizing up.\n");
         ht_resize_up(ht);
     }
 
@@ -128,6 +160,7 @@ void ht_insert(ht_hash_table* ht, const char* key, const char* value){
         cur_item = ht->items[index];
         i++;
     }
+    printf("Inserted key \"%s\" at index %d\n", key, index);
     ht->items[index] = item;
     ht->count++; 
 }
