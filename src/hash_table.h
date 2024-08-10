@@ -8,6 +8,7 @@ typedef struct {
     int size;
     int count;
     ht_item** items;
+    int base_size;
 } ht_hash_table;
 
 ht_hash_table* ht_new();
