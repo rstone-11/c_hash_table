@@ -10,7 +10,9 @@
 #define HT_INITIAL_BASE_SIZE 10
 static ht_item HT_DELETED_ITEM = {NULL, NULL};
 
-
+/*
+Creates a new key-value pair (ht_item) for the the hash table
+*/
 static ht_item* ht_new_item(const char* k, const char* v){
     ht_item* i = malloc(sizeof(ht_item));
     i->key = strdup(k);
@@ -18,12 +20,21 @@ static ht_item* ht_new_item(const char* k, const char* v){
     return i;
 }
 
+/*
+deletes an ht_item by freeing the memory allocated for the key-value
+then the item itself
+*/
 static void ht_del_item(ht_item* i){
     free(i->key);
     free(i->value);
     free(i);
 }
 
+/*
+hashes a string using a combination of a prime number and a modulo
+iteratively multiplies each characters ascii value by the decreasing power of prime a
+and summing the results to modulo m so it stays within range
+*/
 static int ht_hash(const char* s, const int a, const int m){
     long hash = 0;
     const int len_s = strlen(s);
@@ -33,17 +44,16 @@ static int ht_hash(const char* s, const int a, const int m){
         hash = hash % m;
     }
 
-    if(hash == 0){
-        hash = 1;
-    }
     return (int)hash;
 }
 
+/*
+combines two hash values to compute the final index in the hash table
+the second hash helps in finding a new slot when collisions occur
+*/
 static int ht_get_hash(const char* s, const int num_buckets, const int attempt){
     const int hash_a = ht_hash(s, HT_PRIME_1, num_buckets);
     int hash_b = ht_hash(s, HT_PRIME_2, num_buckets);
-
-    hash_b = hash_b % num_buckets == 0 ? hash_b -1 : hash_b;
 
     printf("Hash A: %i", hash_a);
     printf("Hash B: %i", hash_b);
@@ -53,6 +63,10 @@ static int ht_get_hash(const char* s, const int num_buckets, const int attempt){
     return (hash_a + (attempt * (hash_b+1))) % num_buckets;
 }
 
+/*
+custom wrapper for malloc - allocates uninitialized memory that adds error checking
+if there is a failure in allocating memory, the program terminates
+*/
 static void* xmalloc(size_t size){
     void* ptr = malloc(size);
     if(ptr == NULL){
@@ -62,6 +76,10 @@ static void* xmalloc(size_t size){
     return ptr;
 }
 
+/*
+custom wrapper for calloc - allocates memorby initialized to zero that adds error checking
+if there is an allocation failure, the program terminates
+*/
 static void* xcalloc(size_t num, size_t size){
     void* ptr = calloc(num, size);
     if(ptr == NULL){
@@ -71,6 +89,10 @@ static void* xcalloc(size_t num, size_t size){
     return ptr;
 }
 
+/*
+initializes a new hash table on a given base size
+allocates memory for a new hash table and initialize memory for items to zero
+*/
 static ht_hash_table* ht_new_sized(const int base_size){
     ht_hash_table* ht = xmalloc(sizeof(ht_hash_table));
     ht->base_size = base_size;
@@ -82,6 +104,10 @@ static ht_hash_table* ht_new_sized(const int base_size){
     return ht;
 }
 
+/*
+resizes the hash table up or down based on current load
+rehashes all existing items and swaps new hash with the old one
+*/
 static void ht_resize(ht_hash_table* ht, const int base_size){
     if(base_size < HT_INITIAL_BASE_SIZE){
         return;
@@ -110,20 +136,32 @@ static void ht_resize(ht_hash_table* ht, const int base_size){
 
 }
 
+/*
+double the base size of the hash table and resize it
+*/
 static void ht_resize_up(ht_hash_table* ht){
     const int new_size = ht->base_size * 2;
     ht_resize(ht, new_size);
 }
 
+/*
+halves the base size of the hash table and resizes it
+*/
 static void ht_resize_down(ht_hash_table* ht){
     const int new_size = ht->base_size / 2;
     ht_resize(ht, new_size);
 }
 
+/*
+creates a new hash table with teh default initial size
+*/
 ht_hash_table* ht_new(){
     return ht_new_sized(HT_INITIAL_BASE_SIZE);
 }
 
+/*
+deletes each item in the hash table and then the hash table itself
+*/
 void ht_del_hash_table(ht_hash_table* ht){
 
     for(int i = 0; i < ht->size; i++){
@@ -136,6 +174,12 @@ void ht_del_hash_table(ht_hash_table* ht){
     free(ht);
 }
 
+/*
+insert a key-value pair into the hash table
+checks if more than 70% of table is filled, if so it resizes up
+creates the item and finds the index through hashing
+if key already exists updates the value
+*/
 void ht_insert(ht_hash_table* ht, const char* key, const char* value){
     printf("Inserting key \"%s\" with value \"%s\"\n", key, value);
     const int load = ht->count * 100 / ht->size;
@@ -165,6 +209,10 @@ void ht_insert(ht_hash_table* ht, const char* key, const char* value){
     ht->count++; 
 }
 
+/*
+searches for a key in the hash table and returns the value, NULL if not found
+does this by hashing the key and checking that index in the hash table
+*/
 char* ht_search(ht_hash_table* ht, const char* key){
     int index = ht_get_hash(key, ht->size, 0);
     ht_item* item = ht->items[index];
@@ -182,11 +230,16 @@ char* ht_search(ht_hash_table* ht, const char* key){
     return NULL;
 }
 
+/*
+removes a key-value pair from the hash table
+if less than 10% of table is filled, it resizes-down
+marks the slot as deleted with a const variable
+*/
 void ht_delete(ht_hash_table* ht, const char* key){
 
     const int load = ht->count * 100 / ht->size;
-    if(load > 70){
-        ht_resize_up(ht);
+    if(load < 10){
+        ht_resize_down(ht);
     }
 
     int index = ht_get_hash(key, ht->size, 0);
