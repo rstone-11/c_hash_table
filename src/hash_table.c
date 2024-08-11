@@ -90,7 +90,7 @@ static void* xcalloc(size_t num, size_t size){
 }
 
 /*
-initializes a new hash table on a given base size
+initializes a new hash table on a given base size, with a prime number
 allocates memory for a new hash table and initialize memory for items to zero
 */
 static ht_hash_table* ht_new_sized(const int base_size){
@@ -137,7 +137,7 @@ static void ht_resize(ht_hash_table* ht, const int base_size){
 }
 
 /*
-double the base size of the hash table and resize it
+sets the size of the hash table to the first prime number double the base size
 */
 static void ht_resize_up(ht_hash_table* ht){
     const int new_size = ht->base_size * 2;
@@ -145,7 +145,7 @@ static void ht_resize_up(ht_hash_table* ht){
 }
 
 /*
-halves the base size of the hash table and resizes it
+sets the size of the hash table to the first prime number half the base size
 */
 static void ht_resize_down(ht_hash_table* ht){
     const int new_size = ht->base_size / 2;
@@ -234,6 +234,7 @@ char* ht_search(ht_hash_table* ht, const char* key){
 removes a key-value pair from the hash table
 if less than 10% of table is filled, it resizes-down
 marks the slot as deleted with a const variable
+if key doesn't exist nothing changes
 */
 void ht_delete(ht_hash_table* ht, const char* key){
 
@@ -242,14 +243,19 @@ void ht_delete(ht_hash_table* ht, const char* key){
         ht_resize_down(ht);
     }
 
+    int item_deleted = 0;
+
     int index = ht_get_hash(key, ht->size, 0);
     ht_item* item = ht->items[index];
     int i = 1;
     while(item != NULL){
+        printf("attempting to delete: %s", key);
         if(item != &HT_DELETED_ITEM){
             if(strcmp(item->key, key) == 0){
                 ht_del_item(item);
                 ht->items[index] = &HT_DELETED_ITEM;
+                item_deleted = 1;
+                break;
             }
         }
 
@@ -257,6 +263,22 @@ void ht_delete(ht_hash_table* ht, const char* key){
         item = ht->items[index];
         i++;
     }
-    ht->count--;
+
+    if(item_deleted){
+        ht->count--;
+    }
 }
 
+/*
+prints every key value apir in the hash table
+*/
+void ht_iterate(ht_hash_table* ht){
+
+    for(int i = 0; i < ht->size; i++){
+        ht_item* item = ht->items[i];
+        if(item != NULL &&item != &HT_DELETED_ITEM){
+            printf("At bucket %i, %s : %s\n", i, item->key, item->value);
+        }
+    }
+
+}

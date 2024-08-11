@@ -38,6 +38,8 @@ int main(){
     printf("key1: %s\n", ht_search(ht, "key1"));
     printf("key6: %s\n", ht_search(ht, "key6"));
 
+    ht_iterate(ht);
+
     ht_del_hash_table(ht);
 
     return 0;
