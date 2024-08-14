@@ -55,11 +55,11 @@ static int ht_get_hash(const char* s, const int num_buckets, const int attempt){
     const int hash_a = ht_hash(s, HT_PRIME_1, num_buckets);
     int hash_b = ht_hash(s, HT_PRIME_2, num_buckets);
 
-    printf("Hash A: %i", hash_a);
-    printf("Hash B: %i", hash_b);
+    //printf("Hash A: %i\n", hash_a);
+    //printf("Hash B: %i\n", hash_b);
 
     int index = (hash_a + (attempt * (hash_b+1))) % num_buckets;
-    printf("Hashing key \"%s\": Attempt %d -> Index %d\n", s, attempt, index);
+    //printf("Hashing key \"%s\": Attempt %d -> Index %d\n", s, attempt, index);
     return (hash_a + (attempt * (hash_b+1))) % num_buckets;
 }
 
@@ -101,12 +101,15 @@ static ht_hash_table* ht_new_sized(const int base_size){
 
     ht->count = 0;
     ht->items = xcalloc((size_t)ht->size, sizeof(ht_item*));
+    ht->total_collisions = 0;
+    ht->max_collisions_insertion = 0;
     return ht;
 }
 
 /*
 resizes the hash table up or down based on current load
 rehashes all existing items and swaps new hash with the old one
+size will be the first prime number greater than size passed in
 */
 static void ht_resize(ht_hash_table* ht, const int base_size){
     if(base_size < HT_INITIAL_BASE_SIZE){
@@ -123,7 +126,10 @@ static void ht_resize(ht_hash_table* ht, const int base_size){
 
     ht->base_size = new_ht->base_size;
     ht->count = new_ht->count;
+    ht->total_collisions = new_ht->total_collisions;
+    ht->max_collisions_insertion = new_ht->max_collisions_insertion;
 
+    //need to keep track of size as its used to iterate through items to delete them
     const int tmp_size = ht->size;
     ht->size = new_ht->size;
     new_ht->size = tmp_size;
@@ -156,6 +162,7 @@ static void ht_resize_down(ht_hash_table* ht){
 creates a new hash table with teh default initial size
 */
 ht_hash_table* ht_new(){
+    printf("Hash table starting at a size of: %i\n", HT_INITIAL_BASE_SIZE);
     return ht_new_sized(HT_INITIAL_BASE_SIZE);
 }
 
@@ -179,14 +186,17 @@ insert a key-value pair into the hash table
 checks if more than 70% of table is filled, if so it resizes up
 creates the item and finds the index through hashing
 if key already exists updates the value
+tracks number of collisions when attempting to insert item
 */
 void ht_insert(ht_hash_table* ht, const char* key, const char* value){
-    printf("Inserting key \"%s\" with value \"%s\"\n", key, value);
+    //printf("Inserting key \"%s\" with value \"%s\"\n", key, value);
     const int load = ht->count * 100 / ht->size;
     if(load > 70){
-        printf("Load factor exceeded, resizing up.\n");
+        printf("\n%i of %i buckets were used\nLoad factor exceeded, resizing up.\n\n", ht->count, ht->size);
         ht_resize_up(ht);
     }
+
+    int collisions = 0;
 
     ht_item* item = ht_new_item(key, value);
     int index = ht_get_hash(item->key, ht->size, 0);
@@ -203,10 +213,18 @@ void ht_insert(ht_hash_table* ht, const char* key, const char* value){
         index = ht_get_hash(item->key, ht->size, i);
         cur_item = ht->items[index];
         i++;
+        collisions++;
+        //printf("There was a collision\n");
     }
-    printf("Inserted key \"%s\" at index %d\n", key, index);
+    //printf("Inserted key \"%s\" at index %d\n", key, index);
     ht->items[index] = item;
-    ht->count++; 
+    ht->count++;
+    ht->total_collisions += collisions;
+    //printf("increased total collisions by %i to %i\n", collisions, ht->total_collisions);
+
+    if(collisions > ht->max_collisions_insertion){
+        ht->max_collisions_insertion = collisions;
+    }
 }
 
 /*
@@ -235,8 +253,9 @@ removes a key-value pair from the hash table
 if less than 10% of table is filled, it resizes-down
 marks the slot as deleted with a const variable
 if key doesn't exist nothing changes
+returns 1 if an item was removed, 0 otherwise
 */
-void ht_delete(ht_hash_table* ht, const char* key){
+int ht_delete(ht_hash_table* ht, const char* key){
 
     const int load = ht->count * 100 / ht->size;
     if(load < 10){
@@ -249,7 +268,7 @@ void ht_delete(ht_hash_table* ht, const char* key){
     ht_item* item = ht->items[index];
     int i = 1;
     while(item != NULL){
-        printf("attempting to delete: %s", key);
+        
         if(item != &HT_DELETED_ITEM){
             if(strcmp(item->key, key) == 0){
                 ht_del_item(item);
@@ -266,11 +285,13 @@ void ht_delete(ht_hash_table* ht, const char* key){
 
     if(item_deleted){
         ht->count--;
+        return 1;
     }
+    return 0;
 }
 
 /*
-prints every key value apir in the hash table
+prints every key-value pair in the hash table
 */
 void ht_iterate(ht_hash_table* ht){
 
@@ -280,5 +301,30 @@ void ht_iterate(ht_hash_table* ht){
             printf("At bucket %i, %s : %s\n", i, item->key, item->value);
         }
     }
+
+}
+
+/*
+gets the average number of collisions per insertion for the table as a decimal
+*/
+double ht_get_avg_collisions(ht_hash_table* ht){
+
+    if(ht->count == 0){
+        return 0;
+    }
+    //printf("total collisions: %i\n", ht->total_collisions);
+    //printf("count: %i\n", ht->count);
+    return (double)ht->total_collisions / ht->count;
+
+}
+
+/*
+prints the collisions statistics for the hash table
+*/
+void ht_print_collision_stats(ht_hash_table* ht){
+
+    printf("Table holds %i keys with a size of %d\n", ht->count, ht->size);
+    printf("There have been %i collisions with an avg collision per insertion of %.2f\n", ht->total_collisions, ht_get_avg_collisions(ht));
+    printf("The max collisions on a single insertion was %i\n", ht->max_collisions_insertion);
 
 }
