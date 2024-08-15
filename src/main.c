@@ -33,6 +33,7 @@ int main(){
 
     ht_iterate(ht);
     ht_print_collision_stats(ht);
+    ht_print_memory_usage(ht);
 
     ht_del_hash_table(ht);
     

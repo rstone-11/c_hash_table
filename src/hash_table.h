@@ -21,3 +21,4 @@ int ht_delete(ht_hash_table* ht, const char* key);
 void ht_iterate(ht_hash_table* ht);
 double ht_get_avg_collisions(ht_hash_table* ht);
 void ht_print_collision_stats(ht_hash_table* ht);
+void ht_print_memory_usage(ht_hash_table* ht);

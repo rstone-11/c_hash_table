@@ -159,6 +159,27 @@ static void ht_resize_down(ht_hash_table* ht){
 }
 
 /*
+adds up the number of bytes the hash table takes up in memory
+ht_hash_table struct + items pointer array + each ht_item
+*/
+static size_t ht_memory_usage(ht_hash_table* ht){
+
+    size_t table_size = sizeof(ht_hash_table) + (ht->size * sizeof(ht_item*));
+    size_t items_size = 0;
+
+    for(int i = 0; i < ht->size; i++){
+        ht_item* item = ht->items[i];
+        if(item != NULL && item != &HT_DELETED_ITEM){
+            items_size += sizeof(ht_item);
+            items_size += strlen(item->key) + 1;
+            items_size += strlen(item->value) + 1;
+        }
+
+    }
+    return table_size + items_size;
+}
+
+/*
 creates a new hash table with teh default initial size
 */
 ht_hash_table* ht_new(){
@@ -327,4 +348,12 @@ void ht_print_collision_stats(ht_hash_table* ht){
     printf("There have been %i collisions with an avg collision per insertion of %.2f\n", ht->total_collisions, ht_get_avg_collisions(ht));
     printf("The max collisions on a single insertion was %i\n", ht->max_collisions_insertion);
 
+}
+
+/*
+prints the number of bytes the hash table takes up in memory
+*/
+void ht_print_memory_usage(ht_hash_table* ht){
+    size_t size = ht_memory_usage(ht);
+    printf("Size of the hash table is %zu bytes\n", size);
 }
