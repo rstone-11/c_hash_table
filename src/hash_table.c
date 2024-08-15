@@ -183,7 +183,7 @@ static size_t ht_memory_usage(ht_hash_table* ht){
 creates a new hash table with teh default initial size
 */
 ht_hash_table* ht_new(){
-    printf("Hash table starting at a size of: %i\n", HT_INITIAL_BASE_SIZE);
+    printf("Hash table starting at a base size of: %i\n", HT_INITIAL_BASE_SIZE);
     return ht_new_sized(HT_INITIAL_BASE_SIZE);
 }
 
@@ -246,6 +246,18 @@ void ht_insert(ht_hash_table* ht, const char* key, const char* value){
     if(collisions > ht->max_collisions_insertion){
         ht->max_collisions_insertion = collisions;
     }
+}
+
+/*
+inserts multiple key-value pairs into the hash table
+takes in a hash table pointer, array of keys, array of values, and number of pairs to insert
+*/
+void ht_batch_insert(ht_hash_table* ht, char** keys, char** values, size_t count){
+
+    for(size_t i = 0; i < count; i++){
+        ht_insert(ht, keys[i], values[i]);
+    }
+
 }
 
 /*
@@ -344,7 +356,7 @@ prints the collisions statistics for the hash table
 */
 void ht_print_collision_stats(ht_hash_table* ht){
 
-    printf("Table holds %i keys with a size of %d\n", ht->count, ht->size);
+    printf("\nTable holds %i keys with a size of %d\n", ht->count, ht->size);
     printf("There have been %i collisions with an avg collision per insertion of %.2f\n", ht->total_collisions, ht_get_avg_collisions(ht));
     printf("The max collisions on a single insertion was %i\n", ht->max_collisions_insertion);
 

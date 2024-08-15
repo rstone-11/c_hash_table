@@ -1,3 +1,4 @@
+#include <stddef.h>
 
 typedef struct {
     char* key;
@@ -16,6 +17,7 @@ typedef struct {
 ht_hash_table* ht_new();
 void ht_del_hash_table(ht_hash_table* ht);
 void ht_insert(ht_hash_table* ht, const char* key, const char* value);
+void ht_batch_insert(ht_hash_table* ht, char** keys, char** values, size_t count);
 char* ht_search(ht_hash_table* ht, const char* key);
 int ht_delete(ht_hash_table* ht, const char* key);
 void ht_iterate(ht_hash_table* ht);

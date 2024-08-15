@@ -27,8 +27,9 @@ int main(){
     ht_insert(ht, "key5", "value5");
     ht_insert(ht, "key6", "value6"); 
 
-    //printf("key1: %s\n", ht_search(ht, "key1"));
-    //printf("key6: %s\n", ht_search(ht, "key6"));
+    char* keys[] = {"key7", "key8", "key9"};
+    char* values[] = {"value7", "value8", "value9"};
+    ht_batch_insert(ht, keys, values, sizeof(keys)/sizeof(keys[0]));
     
 
     ht_iterate(ht);
